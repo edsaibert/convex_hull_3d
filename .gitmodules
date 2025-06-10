@@ -1,0 +1,3 @@
+[submodule "dcel"]
+	path = dcel
+	url = git@github.com:ThaGaCL/dcel.git

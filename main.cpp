@@ -2,14 +2,10 @@
 
 int main() {
     Mesh mesh;
+    ConvexHull convexHull;
 
-    // Cria os vértices do tetraedro
-    Vertice* v1 = mesh.createNewVertex(0, 0, 0);
-    Vertice* v2 = mesh.createNewVertex(1, 0, 0);
-    Vertice* v3 = mesh.createNewVertex(0, 1, 0);
-    Vertice* v4 = mesh.createNewVertex(0, 0, 1);
-
-    mesh.loadTetrahedron(v1, v2, v3, v4);
+    convexHull.readCloud();
+    convexHull.loadTetrahedron(mesh);
 
     return 0;
 }

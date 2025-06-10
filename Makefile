@@ -2,7 +2,7 @@ LDFLAGS += -L./dcel -lmesh
 INCLUDES += -I./dcel
 CXX := g++
 CXXFLAGS := -Wall -g
-CPP_SRCS := main.cpp 
+CPP_SRCS := main.cpp ConvexHull.cpp
 
 TARGET := convex_hull
 

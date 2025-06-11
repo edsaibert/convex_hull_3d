@@ -2,7 +2,7 @@
 #define CONVEXHULL_H
 
 #include "./dcel/mesh.h"
-
+#include "./grafo/graph.h"
 
 using namespace std;
 using PointCloud = vector<vector<int>>;
@@ -22,6 +22,10 @@ class ConvexHull {
     private:
         PointCloud pointCloud;
         void findNotCoplanarPoints(Mesh &mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
+        void addPairsToConflictList(Mesh& mesh);
+        void permutePointCloud();
+
+        BipartiteGraph* conflictList = nullptr;
 };
 
 #endif

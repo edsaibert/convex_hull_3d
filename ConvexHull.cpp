@@ -100,6 +100,39 @@ void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Ve
     }
 }
 
+void ConvexHull::permutePointCloud(){
+    // Embaralha a nuvem de pontos
+    random_shuffle(pointCloud.begin(), pointCloud.end());
+}
+
+void ConvexHull::constructConflictList(){
+    
+}
+
+void ConvexHull::addPairsToConflictList(Mesh& mesh){
+    unsigned int pointCloudSize = pointCloud.size();
+    for (unsigned int i = 0; i < pointCloudSize; ++i) {
+        Node* node = add_node(conflictList, i, true);
+
+        if (!node) {
+            cout << "Failed to add node for point " << i << endl;
+            continue;
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh.faces.size(); ++i){
+        FACES faces = mesh.getFaces();
+        Node* faceNode = add_node(conflictList, i + pointCloudSize, true);
+
+        if (!faceNode) {
+            cout << "Failed to add node for face " << i << endl;
+            continue;
+        }
+    }
+
+    constructConflictList(mesh); 
+}
+
 /*
     Algoritmo principal de construção do Convex Hull
 */
@@ -107,7 +140,10 @@ void ConvexHull::createConvexHull(Mesh& mesh){
     // encontre quatro pontos não coplanares para formar um tetraedro inicial
     loadTetrahedron(mesh);
     // computar uma permutação dos pontos restantes
+    permutePointCloud();
     // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
+    conflictList = create_bipartite_graph();
+    addPairsToConflictList(mesh);
     
     // enquanto houver pontos na nuvem de pontos, faça:
     while (pointCloud.size() > 0){

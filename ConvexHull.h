@@ -14,6 +14,7 @@ class ConvexHull {
         ~ConvexHull() {};
         
         void readCloud();
+        void createConvexHull(Mesh& mesh);
         void loadTetrahedron(Mesh& mesh);
         void addToConvexHull(Mesh& mesh, Vertice* v);
         void constructPartitionedFace(Face* f, Vertice* v);

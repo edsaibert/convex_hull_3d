@@ -68,6 +68,9 @@ bool isTheSamePoint(Vertice* v, vector<int>& point){
     return false; // Não é o mesmo ponto
 }
 
+/*
+    Encontra quatro pontos não coplanares na nuvem de pontos
+*/
 void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4){
     unsigned int i = 0;
     while (i < pointCloud.size()) {
@@ -97,26 +100,28 @@ void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Ve
     }
 }
 
-float signedVolume(Vertice* v1, Vertice* v2, Vertice* v3, Vertice* v4) {
-    // Compute vectors
-    float x1 = v2->x - v1->x;
-    float y1 = v2->y - v1->y;
-    float z1 = v2->z - v1->z;
-
-    float x2 = v3->x - v1->x;
-    float y2 = v3->y - v1->y;
-    float z2 = v3->z - v1->z;
-
-    float x3 = v4->x - v1->x;
-    float y3 = v4->y - v1->y;
-    float z3 = v4->z - v1->z;
-
-    // Compute determinant / scalar triple product
-    float volume = (x1 * (y2 * z3 - y3 * z2)
-                  - y1 * (x2 * z3 - x3 * z2)
-                  + z1 * (x2 * y3 - x3 * y2)) / 6.0f;
-
-    return volume;
+/*
+    Algoritmo principal de construção do Convex Hull
+*/
+void ConvexHull::createConvexHull(Mesh& mesh){
+    // encontre quatro pontos não coplanares para formar um tetraedro inicial
+    loadTetrahedron(mesh);
+    // computar uma permutação dos pontos restantes
+    // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
+    
+    // enquanto houver pontos na nuvem de pontos, faça:
+    while (pointCloud.size() > 0){
+        // adicionar o ponto pr à malha 
+        // se pr é visível à uma face f (é exterior), então:
+            // deletar todas as faces do conflito com pr da malha
+            // caminhar pela margem da área visível de pr, e criar uma lista das L arestas (em ordem)
+            // para cada aresta l em L, faça:
+                // conecte pr à aresta l, criando uma nova face triangular f'
+                // se f' é coplanar com uma vizinha face f, então faça um merge f' e f 
+                // se não, crie um nodo no grafo de visibilidade G para f' 
+            // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
+            // atualize a malha e o grafo de visibilidade conforme necessário
+    }
 }
 
 void ConvexHull::loadTetrahedron(Mesh& mesh){

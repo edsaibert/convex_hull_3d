@@ -8,6 +8,7 @@ using namespace std;
 
 typedef struct Node {
     int id;
+    int refId;  // Reference ID for the node, used to identify the node in the original context
     bool is_in_set_A; // T if in set A, F if in set B
     struct Node* next; // Pointer to the next node in the adjacency list
     struct Edge* edges; // Pointer to the first edge in the adjacency list
@@ -34,7 +35,7 @@ void free_bipartite_graph(BipartiteGraph* graph);
     Adds a node to the bipartite graph.
     Returns a pointer to the newly created node, or NULL if id is already in use.
 */
-Node* add_node(BipartiteGraph* graph, int id, bool is_in_set_A);
+Node* add_node(BipartiteGraph* graph, int id, int refId, bool is_in_set_A);
 
 /*
     Adds an edge between two nodes
@@ -48,6 +49,7 @@ void print_bipartite_graph(const BipartiteGraph* graph);
 ///// DEBUG FUNCTIONS /////
 bool is_node_in_graph(const BipartiteGraph* graph, int id);
 Node* get_node_by_id(const BipartiteGraph* graph, int id);
+Node* get_node_by_ref_id(const BipartiteGraph* graph, int refId, bool is_in_set_A);
 void print_node(const Node* node);
 void print_edge(const Edge* edge);
 void print_edges(const Edge* edge);

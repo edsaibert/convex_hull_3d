@@ -5,7 +5,8 @@ int main() {
     ConvexHull convexHull;
 
     convexHull.readCloud();
-    convexHull.loadTetrahedron(mesh);
+    // convexHull.loadTetrahedron(mesh);
+    convexHull.createConvexHull(mesh);
 
     return 0;
 }

@@ -1,8 +1,8 @@
-LDFLAGS += -L./dcel -lmesh
-INCLUDES += -I./dcel
+LDFLAGS += -L./dcel -lmesh -L./grafo -lgraph
+INCLUDES += -I./dcel -I./grafo
 CXX := g++
 CXXFLAGS := -Wall -g
-CPP_SRCS := main.cpp ConvexHull.cpp
+CPP_SRCS := main.cpp ConvexHull.cpp 
 
 TARGET := convex_hull
 

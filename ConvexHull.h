@@ -3,6 +3,8 @@
 
 #include "./dcel/mesh.h"
 #include "./grafo/graph.h"
+#include <algorithm>
+#include <random>
 
 using namespace std;
 using PointCloud = vector<vector<int>>;
@@ -23,6 +25,8 @@ class ConvexHull {
         PointCloud pointCloud;
         void findNotCoplanarPoints(Mesh &mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void addPairsToConflictList(Mesh& mesh);
+        void constructConflictList(Mesh& mesh);
+        bool pointIsAboveFace(Face* face, vector<int>& point);
         void permutePointCloud();
 
         BipartiteGraph* conflictList = nullptr;

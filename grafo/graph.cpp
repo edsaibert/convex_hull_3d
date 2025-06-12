@@ -26,13 +26,14 @@ void free_bipartite_graph(BipartiteGraph* graph){
     }
 }
 
-Node* add_node(BipartiteGraph* graph, int id, bool is_in_set_A){
+Node* add_node(BipartiteGraph* graph, int id, int refId, bool is_in_set_A){
     if (get_node_by_id(graph, id) != nullptr){
         return nullptr;
     }
 
     Node* new_node = new Node;
     new_node->id = id;
+    new_node->refId = refId;
     new_node->is_in_set_A = is_in_set_A;
     new_node->next = nullptr;
     new_node->edges = nullptr;
@@ -92,6 +93,17 @@ bool is_node_in_graph(const BipartiteGraph* graph, int id){
         return true;
     }
     return false;
+}
+
+Node* get_node_by_ref_id(const BipartiteGraph* graph, int refId, bool is_in_set_A){
+    Node* current = graph->nodes;
+    while (current != nullptr) {
+        if (current->refId == refId && current->is_in_set_A == is_in_set_A) {
+            return current;
+        }
+        current = current->next;
+    }
+    return nullptr; 
 }
 
 Node* get_node_by_id(const BipartiteGraph* graph, int id){

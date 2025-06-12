@@ -102,17 +102,75 @@ void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Ve
 
 void ConvexHull::permutePointCloud(){
     // Embaralha a nuvem de pontos
-    random_shuffle(pointCloud.begin(), pointCloud.end());
+    std::random_device rd;
+    std::mt19937 g(rd());
+    shuffle(pointCloud.begin(), pointCloud.end(), g);
 }
 
-void ConvexHull::constructConflictList(){
-    
+vector<int> subtractVectors(const vector<int>& v1, const vector<int>& v2) {
+    return {v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]};
+}
+
+vector<int> crossProduct(const vector<int>& v1, const vector<int>& v2) {
+    return {
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]
+    };
+}
+
+void computePlaneEquation(Face* face, int& A, int& B, int& C, int& D) {
+    Vertice* v1 = face->halfEdge->origin;
+    Vertice* v2 = face->halfEdge->next->origin;
+    Vertice* v3 = face->halfEdge->prev->origin;
+
+    // A equação do plano é Ax + By + Cz + D = 0
+    vector<int> ab = subtractVectors({v2->x, v2->y, v2->z}, {v1->x, v1->y, v1->z});
+    vector<int> ac = subtractVectors({v3->x, v3->y, v3->z}, {v1->x, v1->y, v1->z});
+    vector<int> normal = crossProduct(ab, ac);
+
+    A = normal[0];
+    B = normal[1];
+    C = normal[2];
+
+    D = -(A * v1->x + B * v1->y + C * v1->z);
+}
+
+bool ConvexHull::pointIsAboveFace(Face* face, vector<int>& point){
+    int A, B, C, D;
+    computePlaneEquation(face, A, B, C, D);
+
+    int result = A * point[0] + B * point[1] + C * point[2] + D;
+
+    if (result >= 0) {
+        return true;
+    }
+    return false;
+}
+
+void ConvexHull::constructConflictList(Mesh& mesh){
+    for (Face* face : mesh.getFaces()){
+        for (Node* node = conflictList->nodes; node != nullptr; node = node->next) {
+            if (node->is_in_set_A) {
+                // Adiciona a face ao conflito se o ponto é visível para a face
+                if (pointIsAboveFace(face, pointCloud[node->refId])) {
+                    cout << "Point " << pointCloud[node->refId][0] << ", "
+                         << pointCloud[node->refId][1] << ", "
+                         << pointCloud[node->refId][2] << " is visible to face " << face->idx << endl;
+
+                    Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
+                    Node* pointNode = get_node_by_ref_id(conflictList, node->id, true);
+                    add_conflict(conflictList, pointNode->id, faceNode->id);
+                }
+            }
+        }
+    }
 }
 
 void ConvexHull::addPairsToConflictList(Mesh& mesh){
     unsigned int pointCloudSize = pointCloud.size();
     for (unsigned int i = 0; i < pointCloudSize; ++i) {
-        Node* node = add_node(conflictList, i, true);
+        Node* node = add_node(conflictList, i, i, true);
 
         if (!node) {
             cout << "Failed to add node for point " << i << endl;
@@ -120,12 +178,10 @@ void ConvexHull::addPairsToConflictList(Mesh& mesh){
         }
     }
 
-    for (unsigned int i = 0; i < mesh.faces.size(); ++i){
-        FACES faces = mesh.getFaces();
-        Node* faceNode = add_node(conflictList, i + pointCloudSize, true);
-
+    for (Face* face : mesh.getFaces()){
+        Node* faceNode = add_node(conflictList, face->idx + pointCloudSize, face->idx, false);
         if (!faceNode) {
-            cout << "Failed to add node for face " << i << endl;
+            cout << "Failed to add node for face " << face->idx << endl;
             continue;
         }
     }
@@ -146,7 +202,7 @@ void ConvexHull::createConvexHull(Mesh& mesh){
     addPairsToConflictList(mesh);
     
     // enquanto houver pontos na nuvem de pontos, faça:
-    while (pointCloud.size() > 0){
+    // while (pointCloud.size() > 0){
         // adicionar o ponto pr à malha 
         // se pr é visível à uma face f (é exterior), então:
             // deletar todas as faces do conflito com pr da malha
@@ -157,7 +213,7 @@ void ConvexHull::createConvexHull(Mesh& mesh){
                 // se não, crie um nodo no grafo de visibilidade G para f' 
             // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
             // atualize a malha e o grafo de visibilidade conforme necessário
-    }
+    // }
 }
 
 void ConvexHull::loadTetrahedron(Mesh& mesh){

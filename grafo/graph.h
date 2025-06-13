@@ -43,6 +43,14 @@ Node* add_node(BipartiteGraph* graph, int id, int refId, bool is_in_set_A);
 */
 int add_conflict(BipartiteGraph* graph, int from_id, int to_id);
 
+/* Removes a node from the bipartite graph */
+void remove_node(BipartiteGraph* graph, int id);
+
+/*
+    Removes an edge between two nodes.
+*/
+void remove_conflict(BipartiteGraph* graph, int from_id, int to_id);
+
 // Prints the bipartite graph
 void print_bipartite_graph(const BipartiteGraph* graph);
 

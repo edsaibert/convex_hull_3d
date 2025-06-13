@@ -7,7 +7,14 @@
 #include <random>
 
 using namespace std;
-using PointCloud = vector<vector<int>>;
+
+// Define a struct to hold a point and its index
+struct IndexedPoint {
+    int x;
+    int y;
+    int z;
+};
+
 void constructNewVertice(Mesh mesh, int x, int y, int z);
 
 class ConvexHull {
@@ -22,13 +29,16 @@ class ConvexHull {
         void constructPartitionedFace(Face* f, Vertice* v);
 
     private:
-        PointCloud pointCloud;
+        unordered_map<int, IndexedPoint> pointCloud;
         void findNotCoplanarPoints(Mesh &mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void addPairsToConflictList(Mesh& mesh);
         void constructConflictList(Mesh& mesh);
-        bool pointIsAboveFace(Face* face, vector<int>& point);
+        bool pointIsAboveFace(Face* face, IndexedPoint& point);
         void swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();
+
+        vector<HalfEdge*> get_horizon_from_faces(Mesh& mesh, FACES& visibleFaces);
+        FACES collectVisibleFaces(Mesh& mesh, IndexedPoint& pr, int pointIndex);
 
         BipartiteGraph* conflictList = nullptr;
 };

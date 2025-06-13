@@ -117,6 +117,69 @@ Node* get_node_by_id(const BipartiteGraph* graph, int id){
     return nullptr; 
 }
 
+void remove_node(BipartiteGraph* graph, int id){
+    if (!graph || graph->num_nodes == 0) {
+        return; // Graph is empty
+    }
+    
+    Node* current = graph->nodes;
+    Node* previous = nullptr;
+
+    while (current != nullptr) {
+        if (current->id == id) {
+            // Found the node to remove
+            if (previous == nullptr) {
+                // Node is the first in the list
+                graph->nodes = current->next;
+            } else {
+                previous->next = current->next;
+            }
+            // Free edges associated with the node
+            Edge* edge = current->edges;
+            while (edge != nullptr) {
+                Edge* temp_edge = edge;
+                edge = edge->next;
+                delete temp_edge; // Free each edge
+            }
+            delete current; // Free the node itself
+            graph->num_nodes--;
+            return; // Node removed successfully
+        }
+        previous = current;
+        current = current->next;
+    }
+}
+
+void remove_conflict(BipartiteGraph* graph, int from_id, int to_id){
+    if (!graph || graph->num_nodes == 0) {
+        return; // Graph is empty
+    }
+    
+    Node* from_node = get_node_by_id(graph, from_id);
+    if (!from_node) {
+        return; // From node does not exist
+    }
+    
+    Edge* current_edge = from_node->edges;
+    Edge* previous_edge = nullptr;
+
+    while (current_edge != nullptr) {
+        if (current_edge->to->id == to_id) {
+            // Found the edge to remove
+            if (previous_edge == nullptr) {
+                // Edge is the first in the list
+                from_node->edges = current_edge->next;
+            } else {
+                previous_edge->next = current_edge->next;
+            }
+            delete current_edge; // Free the edge
+            return; // Edge removed successfully
+        }
+        previous_edge = current_edge;
+        current_edge = current_edge->next;
+    }
+}
+
 bool is_edge_in_graph(const BipartiteGraph* graph, int from_id, int to_id){
     Node* from_node = get_node_by_id(graph, from_id);
     if (!from_node) {

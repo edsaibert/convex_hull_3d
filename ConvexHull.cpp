@@ -23,12 +23,18 @@
 
 void ConvexHull::readCloud(){
     int x, y, z;
+    int id = 0;
     while(cin >> x >> y >> z) {
-        pointCloud.push_back({x, y, z});
+        IndexedPoint point;
+        point.x = x;
+        point.y = y;
+        point.z = z;
+        pointCloud[id] = point;
+        ++id;
     }
 }
 
-bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, vector<int>& point){
+bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, IndexedPoint& point){
     // Verifica se o ponto está no plano definido pelos três vértices
     // A equação do plano é: Ax + By + Cz + D = 0
     // Onde A, B, C são os coeficientes normais do plano e D é a constante
@@ -36,7 +42,7 @@ bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, vector<int>& point){
     int B = (v2->z - v1->z) * (v3->x - v1->x) - (v2->x - v1->x) * (v3->z - v1->z);
     int C = (v2->x - v1->x) * (v3->y - v1->y) - (v2->y - v1->y) * (v3->x - v1->x);
     int D = -(A * v1->x + B * v1->y + C * v1->z);
-    int result = A * point[0] + B * point[1] + C * point[2] + D;
+    int result = A * point.x + B * point.y + C * point.z + D;
 
     // Se o resultado for zero, o ponto está no plano
     if (result == 0) {
@@ -45,10 +51,10 @@ bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, vector<int>& point){
     return false; // Ponto não está no plano
 }
 
-bool isColinear(Vertice* v1, Vertice* v2, vector<int>& point){
+bool isColinear(Vertice* v1, Vertice* v2, IndexedPoint& point){
     int x1 = v1->x, y1 = v1->y, z1 = v1->z;
     int x2 = v2->x, y2 = v2->y, z2 = v2->z;
-    int x = point[0], y = point[1], z = point[2];
+    int x = point.x, y = point.y, z = point.z;
 
     int dx1 = x2 - x1, dy1 = y2 - y1, dz1 = z2 - z1;
     int dx2 = x - x1, dy2 = y - y1, dz2 = z - z1;
@@ -60,9 +66,9 @@ bool isColinear(Vertice* v1, Vertice* v2, vector<int>& point){
     return (cx == 0 && cy == 0 && cz == 0);
 }
 
-bool isTheSamePoint(Vertice* v, vector<int>& point){
+bool isTheSamePoint(Vertice* v, IndexedPoint& point){
     // Verifica se o ponto é o mesmo que o vértice
-    if (v->x == point[0] && v->y == point[1] && v->z == point[2]) {
+    if (v->x == point.x && v->y == point.y && v->z == point.z) {
         return true; // É o mesmo ponto
     }
     return false; // Não é o mesmo ponto
@@ -72,40 +78,40 @@ bool isTheSamePoint(Vertice* v, vector<int>& point){
     Encontra quatro pontos não coplanares na nuvem de pontos
 */
 void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4){
-    unsigned int i = 0;
-    while (i < pointCloud.size()) {
+    for (auto it = pointCloud.begin(); it != pointCloud.end(); ) {
+        IndexedPoint& point = it->second;
         if (v3 != nullptr){
-            if (isCoplanar(v1, v2, v3, pointCloud[i])) {
-                ++i;
+            if (isCoplanar(v1, v2, v3, point)) {
+                ++it;
                 continue;
             }
-            v4 = mesh.createNewVertex(pointCloud[i][0], pointCloud[i][1], pointCloud[i][2]);
-            pointCloud.erase(pointCloud.begin() + i);
+            v4 = mesh.createNewVertex(point.x, point.y, point.z);
+            it = pointCloud.erase(it);
             break;
         } else if (v2 != nullptr) {
-            if (isColinear(v1, v2, pointCloud[i]) || isTheSamePoint(v1, pointCloud[i]) || isTheSamePoint(v2, pointCloud[i])){
-                ++i;
+            if (isColinear(v1, v2, point) || isTheSamePoint(v1, point) || isTheSamePoint(v2, point)){
+                ++it;
                 continue; 
             }
-            v3 = mesh.createNewVertex(pointCloud[i][0], pointCloud[i][1], pointCloud[i][2]);
-            pointCloud.erase(pointCloud.begin() + i);
+            v3 = mesh.createNewVertex(point.x, point.y, point.z);
+            it = pointCloud.erase(it);
         } else {
-            if (isTheSamePoint(v1, pointCloud[i])){
-                ++i;
+            if (isTheSamePoint(v1, point)){
+                ++it;
                 continue; 
             }
-            v2 = mesh.createNewVertex(pointCloud[i][0], pointCloud[i][1], pointCloud[i][2]);
-            pointCloud.erase(pointCloud.begin() + i);
+            v2 = mesh.createNewVertex(point.x, point.y, point.z);
+            it = pointCloud.erase(it);
         }
     }
 }
 
-void ConvexHull::permutePointCloud(){
-    // Embaralha a nuvem de pontos
-    std::random_device rd;
-    std::mt19937 g(rd());
-    shuffle(pointCloud.begin(), pointCloud.end(), g);
-}
+// void ConvexHull::permutePointCloud(){
+//     // Embaralha a nuvem de pontos
+//     std::random_device rd;
+//     std::mt19937 g(rd());
+//     shuffle(pointCloud.begin(), pointCloud.end(), g);
+// }
 
 vector<int> subtractVectors(const vector<int>& v1, const vector<int>& v2) {
     return {v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]};
@@ -132,14 +138,14 @@ void computePlaneEquation(Vertice* v1, Vertice* v2, Vertice* v3, int& A, int& B,
     D = -(A * v1->x + B * v1->y + C * v1->z);
 }
 
-bool ConvexHull::pointIsAboveFace(Face* face, vector<int>& point){
+bool ConvexHull::pointIsAboveFace(Face* face, IndexedPoint& point){
     int A, B, C, D;
     Vertice* v1 = face->halfEdge->origin;
     Vertice* v2 = face->halfEdge->next->origin;
     Vertice* v3 = face->halfEdge->next->next->origin;
     computePlaneEquation(v1, v2, v3, A, B, C, D);
 
-    int result = A * point[0] + B * point[1] + C * point[2] + D;
+    int result = A * point.x + B * point.y + C * point.z + D;
 
     if (result > 0) {
         return true;
@@ -152,10 +158,10 @@ void ConvexHull::constructConflictList(Mesh& mesh){
         for (Node* node = conflictList->nodes; node != nullptr; node = node->next) {
             if (node->is_in_set_A) {
                 // Adiciona a face ao conflito se o ponto é visível para a face
-                if (pointIsAboveFace(face, pointCloud[node->refId])) {
-                    cout << "Point " << pointCloud[node->refId][0] << ", "
-                         << pointCloud[node->refId][1] << ", "
-                         << pointCloud[node->refId][2] << " is visible to face " << face->idx << endl;
+                if (pointIsAboveFace(face, pointCloud.at(node->refId))) {
+                    cout << "Point " << pointCloud.at(node->refId).x << ", "
+                         << pointCloud.at(node->refId).y << ", "
+                         << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
 
                     Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
                     Node* pointNode = get_node_by_ref_id(conflictList, node->id, true);
@@ -167,18 +173,16 @@ void ConvexHull::constructConflictList(Mesh& mesh){
 }
 
 void ConvexHull::addPairsToConflictList(Mesh& mesh){
-    unsigned int pointCloudSize = pointCloud.size();
-    for (unsigned int i = 0; i < pointCloudSize; ++i) {
-        Node* node = add_node(conflictList, i, i, true);
-
+    for (const auto& [id, pt] : pointCloud) {
+        Node* node = add_node(conflictList, id, id, true);
         if (!node) {
-            cout << "Failed to add node for point " << i << endl;
+            cout << "Failed to add node for point " << id << endl;
             continue;
         }
     }
 
     for (Face* face : mesh.getFaces()){
-        Node* faceNode = add_node(conflictList, face->idx + pointCloudSize, face->idx, false);
+        Node* faceNode = add_node(conflictList, face->idx + pointCloud.size(), face->idx, false); 
         if (!faceNode) {
             cout << "Failed to add node for face " << face->idx << endl;
             continue;
@@ -188,31 +192,93 @@ void ConvexHull::addPairsToConflictList(Mesh& mesh){
     constructConflictList(mesh); 
 }
 
+FACES ConvexHull::collectVisibleFaces(Mesh& mesh, IndexedPoint& pr, int pointIndex){
+    FACES visibleFaces;
+    for (Face* face : mesh.getFaces()){
+        int pointIdx = get_node_by_ref_id(conflictList, pointIndex, true)->id;
+        int faceIdx = get_node_by_ref_id(conflictList, face->idx, false)->id;
+        if (is_edge_in_graph(conflictList, pointIdx, faceIdx)){
+            remove_conflict(conflictList, pointIdx, faceIdx);
+            visibleFaces.push_back(face);
+        }
+    }
+
+    return visibleFaces;
+}
+
+vector<HalfEdge*> ConvexHull::get_horizon_from_faces(Mesh& mesh, FACES& visibleFaces){
+    vector<HalfEdge*> horizon;
+    std::unordered_set<Face*> visibleSet(visibleFaces.begin(), visibleFaces.end());
+
+    for (Face* face : visibleFaces) {
+        HalfEdge* start = face->halfEdge;
+        HalfEdge* he = start;
+        do {
+            // Only one side of the edge should be visible
+            if (he->twin && visibleSet.find(he->twin->leftFace) == visibleSet.end()) {
+                // This edge is on the horizon (face is visible, twin's face is not)
+                horizon.push_back(he);
+            }
+            he = he->next;
+        } while (he != start);
+    }
+    return horizon;
+}
+
 /*
     Algoritmo principal de construção do Convex Hull
 */
 void ConvexHull::createConvexHull(Mesh& mesh){
     // encontre quatro pontos não coplanares para formar um tetraedro inicial
     loadTetrahedron(mesh);
+
+    for (HalfEdge* he : mesh.getHalfEdges()) {
+        mesh.printHalfEdge(he);
+    }
+    cout << "____________________________________________________________" << endl;
     // computar uma permutação dos pontos restantes
-    permutePointCloud();
+    // permutePointCloud();
     // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
     conflictList = create_bipartite_graph();
     addPairsToConflictList(mesh);
     
     // enquanto houver pontos na nuvem de pontos, faça:
-    // while (pointCloud.size() > 0){
+    vector<int> facesIdx = {};
+    vector<HalfEdge*> horizon = {};
+    while (!pointCloud.empty()) {
         // adicionar o ponto pr à malha 
+        auto it = pointCloud.begin();
+        int id = it->first;
+        IndexedPoint& point = it->second;
+
+        Vertice* pr = mesh.createNewVertex(point.x, point.y, point.z);
         // se pr é visível à uma face f (é exterior), então:
+        FACES visibleFaces = collectVisibleFaces(mesh, point, id);
+        horizon = get_horizon_from_faces(mesh, visibleFaces);
+
+        for (Face* face : visibleFaces) {
             // deletar todas as faces do conflito com pr da malha
-            // caminhar pela margem da área visível de pr, e criar uma lista das L arestas (em ordem)
-            // para cada aresta l em L, faça:
-                // conecte pr à aresta l, criando uma nova face triangular f'
-                // se f' é coplanar com uma vizinha face f, então faça um merge f' e f 
-                // se não, crie um nodo no grafo de visibilidade G para f' 
-            // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
-            // atualize a malha e o grafo de visibilidade conforme necessário
-    // }
+            facesIdx.push_back(face->idx);
+            mesh.removeFace(face);
+        }
+
+        // para cada aresta l em L, faça:
+        for (HalfEdge* he : horizon) {
+            // conecte pr à aresta l, criando uma nova face triangular f'
+            Face* newFace = mesh.createNewFace(pr, he);
+            // se f' é coplanar com uma vizinha face f, então faça um merge f' e f 
+            // se não, crie um nodo no grafo de visibilidade G para f' 
+        }
+        
+        for (HalfEdge* he : mesh.getHalfEdges()){
+            mesh.printHalfEdge(he);
+        }
+        break;
+
+        // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
+        // atualize a malha e o grafo de visibilidade conforme necessário
+        pointCloud.erase(it);
+    }
 }
 
 void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4) {
@@ -241,8 +307,8 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
 
     // escolher um ponto aleatório
     int random = rand() % pointCloud.size();
-    Vertice* v1 = mesh.createNewVertex(pointCloud[random][0], pointCloud[random][1], pointCloud[random][2]);
-    pointCloud.erase(pointCloud.begin() + random);
+    Vertice* v1 = mesh.createNewVertex(pointCloud[random].x, pointCloud[random].y, pointCloud[random].z);
+    pointCloud.erase(random);
 
     Vertice* v2 = nullptr;
     Vertice* v3 = nullptr;

@@ -119,11 +119,7 @@ vector<int> crossProduct(const vector<int>& v1, const vector<int>& v2) {
     };
 }
 
-void computePlaneEquation(Face* face, int& A, int& B, int& C, int& D) {
-    Vertice* v1 = face->halfEdge->origin;
-    Vertice* v2 = face->halfEdge->next->origin;
-    Vertice* v3 = face->halfEdge->prev->origin;
-
+void computePlaneEquation(Vertice* v1, Vertice* v2, Vertice* v3, int& A, int& B, int& C, int& D) {
     // A equação do plano é Ax + By + Cz + D = 0
     vector<int> ab = subtractVectors({v2->x, v2->y, v2->z}, {v1->x, v1->y, v1->z});
     vector<int> ac = subtractVectors({v3->x, v3->y, v3->z}, {v1->x, v1->y, v1->z});
@@ -138,11 +134,14 @@ void computePlaneEquation(Face* face, int& A, int& B, int& C, int& D) {
 
 bool ConvexHull::pointIsAboveFace(Face* face, vector<int>& point){
     int A, B, C, D;
-    computePlaneEquation(face, A, B, C, D);
+    Vertice* v1 = face->halfEdge->origin;
+    Vertice* v2 = face->halfEdge->next->origin;
+    Vertice* v3 = face->halfEdge->next->next->origin;
+    computePlaneEquation(v1, v2, v3, A, B, C, D);
 
     int result = A * point[0] + B * point[1] + C * point[2] + D;
 
-    if (result >= 0) {
+    if (result > 0) {
         return true;
     }
     return false;
@@ -216,6 +215,23 @@ void ConvexHull::createConvexHull(Mesh& mesh){
     // }
 }
 
+void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4) {
+    // Verifica se o ponto v3 está abaixo do plano definido por v1 e v2
+    int a, b, c, d;
+    computePlaneEquation(v1, v2, v3, a, b, c, d);
+    vector<int> toV4 = {v4->x - v1->x, v4->y - v1->y, v4->z - v1->z};
+    
+    if (a * toV4[0] + b * toV4[1] + c * toV4[2] + d >= 0){
+        cout << "Point v3 is above the plane defined by v1 and v2." << endl;
+        // Se v3 está acima do plano, não é necessário trocar
+        return;
+    }
+
+    cout << "Point v3 is below the plane defined by v1 and v2. Swapping vertices." << endl;
+
+    swap(v3, v4); // Troca v3 e v4 para garantir que v4 esteja acima do plano
+}
+
 void ConvexHull::loadTetrahedron(Mesh& mesh){
     // necessário encontrar quatro pontos não coplanares
     if (pointCloud.size() < 4){
@@ -245,6 +261,7 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
            v3->x, v3->y, v3->z,
            v4->x, v4->y, v4->z);
 
+    swapIfNegativePlane(v1, v2, v3, v4);
     // Carrega o tetraedro na malha
     mesh.loadTetrahedron(v1, v2, v3, v4);
 }

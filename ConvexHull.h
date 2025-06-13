@@ -27,6 +27,7 @@ class ConvexHull {
         void addPairsToConflictList(Mesh& mesh);
         void constructConflictList(Mesh& mesh);
         bool pointIsAboveFace(Face* face, vector<int>& point);
+        void swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();
 
         BipartiteGraph* conflictList = nullptr;

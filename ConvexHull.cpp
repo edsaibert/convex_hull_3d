@@ -33,6 +33,30 @@ void ConvexHull::readCloud(){
         ++id;
     }
 }
+vector<int> subtractVectors(const vector<int>& v1, const vector<int>& v2) {
+    return {v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]};
+}
+
+vector<int> crossProduct(const vector<int>& v1, const vector<int>& v2) {
+    return {
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+        v1[0] * v2[1] - v1[1] * v2[0]
+    };
+}
+
+void computePlaneEquation(Vertice* v1, Vertice* v2, Vertice* v3, int& A, int& B, int& C, int& D) {
+    // A equação do plano é Ax + By + Cz + D = 0
+    vector<int> ab = subtractVectors({v2->x, v2->y, v2->z}, {v1->x, v1->y, v1->z});
+    vector<int> ac = subtractVectors({v3->x, v3->y, v3->z}, {v1->x, v1->y, v1->z});
+    vector<int> normal = crossProduct(ab, ac);
+
+    A = normal[0];
+    B = normal[1];
+    C = normal[2];
+
+    D = -(A * v1->x + B * v1->y + C * v1->z);
+}
 
 bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, IndexedPoint& point){
     // Verifica se o ponto está no plano definido pelos três vértices
@@ -43,12 +67,32 @@ bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, IndexedPoint& point){
     int C = (v2->x - v1->x) * (v3->y - v1->y) - (v2->y - v1->y) * (v3->x - v1->x);
     int D = -(A * v1->x + B * v1->y + C * v1->z);
     int result = A * point.x + B * point.y + C * point.z + D;
-
+    
     // Se o resultado for zero, o ponto está no plano
     if (result == 0) {
         return true; // Ponto está no plano
     }
     return false; // Ponto não está no plano
+}
+
+bool isCoplanar(Face* f1, Face* f2){
+    int A_f1, A_f2, B_f1, B_f2, C_f1, C_f2, D_f1, D_f2;
+    computePlaneEquation(f1->halfEdge->prev->origin, f1->halfEdge->origin, f1->halfEdge->next->origin, A_f1, B_f1, C_f1, D_f1);
+    computePlaneEquation(f2->halfEdge->prev->origin, f2->halfEdge->origin, f2->halfEdge->next->origin, A_f2, B_f2, C_f2, D_f2);
+
+    vector<int> normalVector_f1 = {A_f1, B_f1, C_f1};
+    vector<int> normalVector_f2 = {A_f2, B_f2, C_f2};
+
+    // Verifica se os vetores normais são paralelos (produto vetorial == 0)
+    vector<int> cross = crossProduct(normalVector_f1, normalVector_f2);
+    if (!(cross[0] == 0 && cross[1] == 0 && cross[2] == 0)) {
+        return false; // Normais não paralelas, não são coplanares
+    }
+
+    // Verifica se um ponto de f2 está no plano de f1
+    Vertice* v_f2 = f2->halfEdge->origin;
+    int result = A_f1 * v_f2->x + B_f1 * v_f2->y + C_f1 * v_f2->z + D_f1;
+    return result == 0;
 }
 
 bool isColinear(Vertice* v1, Vertice* v2, IndexedPoint& point){
@@ -62,9 +106,10 @@ bool isColinear(Vertice* v1, Vertice* v2, IndexedPoint& point){
     int cx = dy1 * dz2 - dz1 * dy2;
     int cy = dz1 * dx2 - dx1 * dz2;
     int cz = dx1 * dy2 - dy1 * dx2;
-
+    
     return (cx == 0 && cy == 0 && cz == 0);
 }
+
 
 bool isTheSamePoint(Vertice* v, IndexedPoint& point){
     // Verifica se o ponto é o mesmo que o vértice
@@ -113,30 +158,7 @@ void ConvexHull::findNotCoplanarPoints(Mesh& mesh, Vertice* v1, Vertice*& v2, Ve
 //     shuffle(pointCloud.begin(), pointCloud.end(), g);
 // }
 
-vector<int> subtractVectors(const vector<int>& v1, const vector<int>& v2) {
-    return {v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]};
-}
 
-vector<int> crossProduct(const vector<int>& v1, const vector<int>& v2) {
-    return {
-        v1[1] * v2[2] - v1[2] * v2[1],
-        v1[2] * v2[0] - v1[0] * v2[2],
-        v1[0] * v2[1] - v1[1] * v2[0]
-    };
-}
-
-void computePlaneEquation(Vertice* v1, Vertice* v2, Vertice* v3, int& A, int& B, int& C, int& D) {
-    // A equação do plano é Ax + By + Cz + D = 0
-    vector<int> ab = subtractVectors({v2->x, v2->y, v2->z}, {v1->x, v1->y, v1->z});
-    vector<int> ac = subtractVectors({v3->x, v3->y, v3->z}, {v1->x, v1->y, v1->z});
-    vector<int> normal = crossProduct(ab, ac);
-
-    A = normal[0];
-    B = normal[1];
-    C = normal[2];
-
-    D = -(A * v1->x + B * v1->y + C * v1->z);
-}
 
 bool ConvexHull::pointIsAboveFace(Face* face, IndexedPoint& point){
     int A, B, C, D;
@@ -225,62 +247,6 @@ vector<HalfEdge*> ConvexHull::get_horizon_from_faces(Mesh& mesh, FACES& visibleF
     return horizon;
 }
 
-/*
-    Algoritmo principal de construção do Convex Hull
-*/
-void ConvexHull::createConvexHull(Mesh& mesh){
-    // encontre quatro pontos não coplanares para formar um tetraedro inicial
-    loadTetrahedron(mesh);
-
-    for (HalfEdge* he : mesh.getHalfEdges()) {
-        mesh.printHalfEdge(he);
-    }
-    cout << "____________________________________________________________" << endl;
-    // computar uma permutação dos pontos restantes
-    // permutePointCloud();
-    // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
-    conflictList = create_bipartite_graph();
-    addPairsToConflictList(mesh);
-    
-    // enquanto houver pontos na nuvem de pontos, faça:
-    vector<int> facesIdx = {};
-    vector<HalfEdge*> horizon = {};
-    while (!pointCloud.empty()) {
-        // adicionar o ponto pr à malha 
-        auto it = pointCloud.begin();
-        int id = it->first;
-        IndexedPoint& point = it->second;
-
-        Vertice* pr = mesh.createNewVertex(point.x, point.y, point.z);
-        // se pr é visível à uma face f (é exterior), então:
-        FACES visibleFaces = collectVisibleFaces(mesh, point, id);
-        horizon = get_horizon_from_faces(mesh, visibleFaces);
-
-        for (Face* face : visibleFaces) {
-            // deletar todas as faces do conflito com pr da malha
-            facesIdx.push_back(face->idx);
-            mesh.removeFace(face);
-        }
-
-        // para cada aresta l em L, faça:
-        for (HalfEdge* he : horizon) {
-            // conecte pr à aresta l, criando uma nova face triangular f'
-            Face* newFace = mesh.createNewFace(pr, he);
-            // se f' é coplanar com uma vizinha face f, então faça um merge f' e f 
-            // se não, crie um nodo no grafo de visibilidade G para f' 
-        }
-        
-        for (HalfEdge* he : mesh.getHalfEdges()){
-            mesh.printHalfEdge(he);
-        }
-        break;
-
-        // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
-        // atualize a malha e o grafo de visibilidade conforme necessário
-        pointCloud.erase(it);
-    }
-}
-
 void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4) {
     // Verifica se o ponto v3 está abaixo do plano definido por v1 e v2
     int a, b, c, d;
@@ -313,21 +279,88 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     Vertice* v2 = nullptr;
     Vertice* v3 = nullptr;
     Vertice* v4 = nullptr;
-
+    
     // encontrar três pontos não coplanares
     findNotCoplanarPoints(mesh, v1, v2, v3, v4);
     if (!v2 || !v3 || !v4) {
         cout << "Could not find four non-coplanar points" << endl;
         return;
     }
-
+    
     printf("Loaded tetrahedron with vertices: (%d, %d, %d), (%d, %d, %d), (%d, %d, %d), (%d, %d, %d)\n",
-           v1->x, v1->y, v1->z,
-           v2->x, v2->y, v2->z,
-           v3->x, v3->y, v3->z,
-           v4->x, v4->y, v4->z);
+        v1->x, v1->y, v1->z,
+        v2->x, v2->y, v2->z,
+        v3->x, v3->y, v3->z,
+        v4->x, v4->y, v4->z);
+        
+        swapIfNegativePlane(v1, v2, v3, v4);
+        // Carrega o tetraedro na malha
+        mesh.loadTetrahedron(v1, v2, v3, v4);
+}
 
-    swapIfNegativePlane(v1, v2, v3, v4);
-    // Carrega o tetraedro na malha
-    mesh.loadTetrahedron(v1, v2, v3, v4);
+/*
+    Algoritmo principal de construção do Convex Hull
+*/
+void ConvexHull::createConvexHull(Mesh &mesh)
+{
+    // encontre quatro pontos não coplanares para formar um tetraedro inicial
+    loadTetrahedron(mesh);
+
+    for (HalfEdge *he : mesh.getHalfEdges())
+    {
+        mesh.printHalfEdge(he);
+    }
+    cout << "____________________________________________________________" << endl;
+    // computar uma permutação dos pontos restantes
+    // permutePointCloud();
+    // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
+    conflictList = create_bipartite_graph();
+    addPairsToConflictList(mesh);
+
+    // enquanto houver pontos na nuvem de pontos, faça:
+    vector<int> facesIdx = {};
+    vector<HalfEdge *> horizon = {};
+    while (!pointCloud.empty())
+    {
+        // adicionar o ponto pr à malha
+        auto it = pointCloud.begin();
+        int id = it->first;
+        IndexedPoint &point = it->second;
+
+        Vertice *pr = mesh.createNewVertex(point.x, point.y, point.z);
+        // se pr é visível à uma face f (é exterior), então:
+        FACES visibleFaces = collectVisibleFaces(mesh, point, id);
+        horizon = get_horizon_from_faces(mesh, visibleFaces);
+
+        for (Face *face : visibleFaces)
+        {
+            // deletar todas as faces do conflito com pr da malha
+            facesIdx.push_back(face->idx);
+            mesh.removeFace(face);
+        }
+
+        // para cada aresta l em L, faça:
+        for (HalfEdge *he : horizon)
+        {
+            // conecte pr à aresta l, criando uma nova face triangular f'
+            Face *newFace = mesh.createNewFace(pr, he);
+            // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
+            if (isCoplanar(newFace, he->twin->leftFace)) {
+                // Merge as faces
+                cout << "idx newFace: " << newFace->idx << endl;
+                cout << "idx face: " << he->twin->leftFace->idx << endl;
+                cout << "faces coplanares" << endl;
+            }
+            // se não, crie um nodo no grafo de visibilidade G para f'
+        }
+
+        for (HalfEdge *he : mesh.getHalfEdges())
+            mesh.printHalfEdge(he);
+
+        break;
+
+        // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
+        // atualize a malha e o grafo de visibilidade conforme necessário
+        pointCloud.erase(it);
+    }
 }

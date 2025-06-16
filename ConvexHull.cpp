@@ -76,23 +76,21 @@ bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, IndexedPoint& point){
 }
 
 bool isCoplanar(Face* f1, Face* f2){
-    int A_f1, A_f2, B_f1, B_f2, C_f1, C_f2, D_f1, D_f2;
-    computePlaneEquation(f1->halfEdge->prev->origin, f1->halfEdge->origin, f1->halfEdge->next->origin, A_f1, B_f1, C_f1, D_f1);
-    computePlaneEquation(f2->halfEdge->prev->origin, f2->halfEdge->origin, f2->halfEdge->next->origin, A_f2, B_f2, C_f2, D_f2);
+    int A1, B1, C1, D1;
+    int A2, B2, C2, D2;
 
-    vector<int> normalVector_f1 = {A_f1, B_f1, C_f1};
-    vector<int> normalVector_f2 = {A_f2, B_f2, C_f2};
+    computePlaneEquation(f1->halfEdge->prev->origin, f1->halfEdge->origin, f1->halfEdge->next->origin, A1, B1, C1, D1);
+    computePlaneEquation(f2->halfEdge->prev->origin, f2->halfEdge->origin, f2->halfEdge->next->origin, A2, B2, C2, D2);
 
-    // Verifica se os vetores normais são paralelos (produto vetorial == 0)
-    vector<int> cross = crossProduct(normalVector_f1, normalVector_f2);
-    if (!(cross[0] == 0 && cross[1] == 0 && cross[2] == 0)) {
-        return false; // Normais não paralelas, não são coplanares
-    }
+    double dot = A1 * A2 + B1 * B2 + C1 * C2;
+    double norm1 = sqrt(A1 * A1 + B1 * B1 + C1 * C1);
+    double norm2 = sqrt(A2 * A2 + B2 * B2 + C2 * C2);
 
-    // Verifica se um ponto de f2 está no plano de f1
-    Vertice* v_f2 = f2->halfEdge->origin;
-    int result = A_f1 * v_f2->x + B_f1 * v_f2->y + C_f1 * v_f2->z + D_f1;
-    return result == 0;
+    double cosine = dot / (norm1 * norm2);
+
+    // Se as faces são concâvas entre si, o cosseno do ângulo entre os vetores normais é positivo
+    // ou seja, o ângulo entre os vetores normais é menor que 90 graus
+    return cosine > 0; 
 }
 
 bool isColinear(Vertice* v1, Vertice* v2, IndexedPoint& point){
@@ -273,6 +271,25 @@ void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Ver
     swap(v3, v4); // Troca v3 e v4 para garantir que v4 esteja acima do plano
 }
 
+void ConvexHull::merge(Mesh& mesh, Face* newFace, HalfEdge* he){
+    HalfEdge* temp = newFace->halfEdge;
+    while (temp->next != newFace->halfEdge) {
+        if (temp->twin != nullptr && temp->twin->leftFace != nullptr) {
+            // Check if the twin face is coplanar with the new face
+            if (isCoplanar(newFace, temp->twin->leftFace)) {
+                // Merge as faces
+                cout << "idx newFace: " << newFace->idx << endl;
+                cout << "idx face: " << temp->twin->leftFace->idx << endl;
+                cout << "faces coplanares" << endl;
+
+                // merge
+                return;
+            }
+        }
+        temp = temp->next;
+    }
+}
+
 void ConvexHull::loadTetrahedron(Mesh& mesh){
     // necessário encontrar quatro pontos não coplanares
     if (pointCloud.size() < 4){
@@ -356,12 +373,8 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             Face *newFace = mesh.createNewFace(pr, he);
             findTwinsForFace(mesh, newFace);
             // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
-            if (isCoplanar(newFace, he->twin->leftFace)) {
-                // Merge as faces
-                cout << "idx newFace: " << newFace->idx << endl;
-                cout << "idx face: " << he->twin->leftFace->idx << endl;
-                cout << "faces coplanares" << endl;
-            }
+            merge(mesh, newFace, he);
+
             
             // se não, crie um nodo no grafo de visibilidade G para f'
         }

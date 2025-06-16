@@ -36,6 +36,7 @@ class ConvexHull {
         bool pointIsAboveFace(Face* face, IndexedPoint& point);
         void swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();
+        void findTwinsForFace(Mesh& mesh, Face* face);
 
         vector<HalfEdge*> get_horizon_from_faces(Mesh& mesh, FACES& visibleFaces);
         FACES collectVisibleFaces(Mesh& mesh, IndexedPoint& pr, int pointIndex);

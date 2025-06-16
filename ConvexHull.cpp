@@ -181,9 +181,9 @@ void ConvexHull::constructConflictList(Mesh& mesh){
             if (node->is_in_set_A) {
                 // Adiciona a face ao conflito se o ponto é visível para a face
                 if (pointIsAboveFace(face, pointCloud.at(node->refId))) {
-                    cout << "Point " << pointCloud.at(node->refId).x << ", "
-                         << pointCloud.at(node->refId).y << ", "
-                         << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
+                    // cout << "Point " << pointCloud.at(node->refId).x << ", "
+                    //      << pointCloud.at(node->refId).y << ", "
+                    //      << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
 
                     Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
                     Node* pointNode = get_node_by_id(conflictList, node->id);
@@ -248,6 +248,14 @@ vector<HalfEdge*> ConvexHull::get_horizon_from_faces(Mesh& mesh, FACES& visibleF
     return horizon;
 }
 
+void ConvexHull::findTwinsForFace(Mesh& mesh, Face* face) {
+    HalfEdge* he = face->halfEdge;
+    do {
+        mesh.findTwin(he);
+        he = he->next;
+    } while (he != face->halfEdge);
+}
+
 void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4) {
     // Verifica se o ponto v3 está abaixo do plano definido por v1 e v2
     int a, b, c, d;
@@ -255,12 +263,12 @@ void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Ver
     vector<int> toV4 = {v4->x - v1->x, v4->y - v1->y, v4->z - v1->z};
     
     if (a * toV4[0] + b * toV4[1] + c * toV4[2] + d >= 0){
-        cout << "Point v3 is above the plane defined by v1 and v2." << endl;
+        // cout << "Point v3 is above the plane defined by v1 and v2." << endl;
         // Se v3 está acima do plano, não é necessário trocar
         return;
     }
 
-    cout << "Point v3 is below the plane defined by v1 and v2. Swapping vertices." << endl;
+    // cout << "Point v3 is below the plane defined by v1 and v2. Swapping vertices." << endl;
 
     swap(v3, v4); // Troca v3 e v4 para garantir que v4 esteja acima do plano
 }
@@ -276,8 +284,6 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     // int random = rand() % pointCloud.size();
     // Vertice* v1 = mesh.createNewVertex(pointCloud[random].x, pointCloud[random].y, pointCloud[random].z);
     // pointCloud.erase(random);
-
-    printf("pointCloud size: %ld\n", pointCloud.size());
 
     int random = rand() % pointCloud.size();
     auto it = pointCloud.begin();
@@ -296,11 +302,11 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
         return;
     }
     
-    printf("Loaded tetrahedron with vertices: (%d, %d, %d), (%d, %d, %d), (%d, %d, %d), (%d, %d, %d)\n",
-        v1->x, v1->y, v1->z,
-        v2->x, v2->y, v2->z,
-        v3->x, v3->y, v3->z,
-        v4->x, v4->y, v4->z);
+    // printf("Loaded tetrahedron with vertices: (%d, %d, %d), (%d, %d, %d), (%d, %d, %d), (%d, %d, %d)\n",
+    //     v1->x, v1->y, v1->z,
+    //     v2->x, v2->y, v2->z,
+    //     v3->x, v3->y, v3->z,
+    //     v4->x, v4->y, v4->z);
         
         swapIfNegativePlane(v1, v2, v3, v4);
         // Carrega o tetraedro na malha
@@ -315,11 +321,6 @@ void ConvexHull::createConvexHull(Mesh &mesh)
     // encontre quatro pontos não coplanares para formar um tetraedro inicial
     loadTetrahedron(mesh);
 
-    for (HalfEdge *he : mesh.getHalfEdges())
-    {
-        mesh.printHalfEdge(he);
-    }
-    cout << "____________________________________________________________" << endl;
     // computar uma permutação dos pontos restantes
     // permutePointCloud();
     // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
@@ -335,25 +336,25 @@ void ConvexHull::createConvexHull(Mesh &mesh)
         auto it = pointCloud.begin();
         int id = it->first;
         IndexedPoint &point = it->second;
-
+        
         Vertice *pr = mesh.createNewVertex(point.x, point.y, point.z);
         // se pr é visível à uma face f (é exterior), então:
         FACES visibleFaces = collectVisibleFaces(mesh, point, id);
         horizon = get_horizon_from_faces(mesh, visibleFaces);
-
+        
         for (Face *face : visibleFaces)
         {
             // deletar todas as faces do conflito com pr da malha
             facesIdx.push_back(face->idx);
             mesh.removeFace(face);
         }
-
+        
         // para cada aresta l em L, faça:
         for (HalfEdge *he : horizon)
         {
             // conecte pr à aresta l, criando uma nova face triangular f'
             Face *newFace = mesh.createNewFace(pr, he);
-            mesh.findTwin(newFace->halfEdge);
+            findTwinsForFace(mesh, newFace);
             // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
             if (isCoplanar(newFace, he->twin->leftFace)) {
                 // Merge as faces
@@ -361,11 +362,11 @@ void ConvexHull::createConvexHull(Mesh &mesh)
                 cout << "idx face: " << he->twin->leftFace->idx << endl;
                 cout << "faces coplanares" << endl;
             }
+            
             // se não, crie um nodo no grafo de visibilidade G para f'
         }
-
-        for (HalfEdge *he : mesh.getHalfEdges())
-            mesh.printHalfEdge(he);
+        mesh.printDCEL();
+        
 
         break;
 

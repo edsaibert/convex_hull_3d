@@ -186,7 +186,7 @@ void ConvexHull::constructConflictList(Mesh& mesh){
                          << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
 
                     Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
-                    Node* pointNode = get_node_by_ref_id(conflictList, node->id, true);
+                    Node* pointNode = get_node_by_id(conflictList, node->id);
                     add_conflict(conflictList, pointNode->id, faceNode->id);
                 }
             }
@@ -195,8 +195,9 @@ void ConvexHull::constructConflictList(Mesh& mesh){
 }
 
 void ConvexHull::addPairsToConflictList(Mesh& mesh){
+    unsigned int curr_id = 0;
     for (const auto& [id, pt] : pointCloud) {
-        Node* node = add_node(conflictList, id, id, true);
+        Node* node = add_node(conflictList, curr_id++, id, true);
         if (!node) {
             cout << "Failed to add node for point " << id << endl;
             continue;
@@ -204,7 +205,7 @@ void ConvexHull::addPairsToConflictList(Mesh& mesh){
     }
 
     for (Face* face : mesh.getFaces()){
-        Node* faceNode = add_node(conflictList, face->idx + pointCloud.size(), face->idx, false); 
+        Node* faceNode = add_node(conflictList, curr_id++, face->idx, false); 
         if (!faceNode) {
             cout << "Failed to add node for face " << face->idx << endl;
             continue;
@@ -272,9 +273,17 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     }
 
     // escolher um ponto aleatório
+    // int random = rand() % pointCloud.size();
+    // Vertice* v1 = mesh.createNewVertex(pointCloud[random].x, pointCloud[random].y, pointCloud[random].z);
+    // pointCloud.erase(random);
+
+    printf("pointCloud size: %ld\n", pointCloud.size());
+
     int random = rand() % pointCloud.size();
-    Vertice* v1 = mesh.createNewVertex(pointCloud[random].x, pointCloud[random].y, pointCloud[random].z);
-    pointCloud.erase(random);
+    auto it = pointCloud.begin();
+    std::advance(it, random);
+    Vertice* v1 = mesh.createNewVertex(it->second.x, it->second.y, it->second.z);
+    pointCloud.erase(it);
 
     Vertice* v2 = nullptr;
     Vertice* v3 = nullptr;
@@ -344,6 +353,7 @@ void ConvexHull::createConvexHull(Mesh &mesh)
         {
             // conecte pr à aresta l, criando uma nova face triangular f'
             Face *newFace = mesh.createNewFace(pr, he);
+            mesh.findTwin(newFace->halfEdge);
             // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
             if (isCoplanar(newFace, he->twin->leftFace)) {
                 // Merge as faces

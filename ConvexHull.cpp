@@ -75,7 +75,7 @@ bool isCoplanar(Vertice* v1, Vertice* v2, Vertice* v3, IndexedPoint& point){
     return false; // Ponto não está no plano
 }
 
-bool isCoplanar(Face* f1, Face* f2){
+double angleBetweenNormals(Face* f1, Face* f2){
     int A1, B1, C1, D1;
     int A2, B2, C2, D2;
 
@@ -87,10 +87,9 @@ bool isCoplanar(Face* f1, Face* f2){
     double norm2 = sqrt(A2 * A2 + B2 * B2 + C2 * C2);
 
     double cosine = dot / (norm1 * norm2);
+    double angle = acos(cosine);
 
-    // Se as faces são concâvas entre si, o cosseno do ângulo entre os vetores normais é positivo
-    // ou seja, o ângulo entre os vetores normais é menor que 90 graus
-    return cosine > 0; 
+    return angle * 180 / M_PI;
 }
 
 bool isColinear(Vertice* v1, Vertice* v2, IndexedPoint& point){
@@ -167,7 +166,7 @@ bool ConvexHull::pointIsAboveFace(Face* face, IndexedPoint& point){
 
     int result = A * point.x + B * point.y + C * point.z + D;
 
-    if (result > 0) {
+    if (result >= 0) {
         return true;
     }
     return false;
@@ -184,8 +183,7 @@ void ConvexHull::constructConflictList(Mesh& mesh){
                     //      << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
 
                     Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
-                    Node* pointNode = get_node_by_id(conflictList, node->id);
-                    add_conflict(conflictList, pointNode->id, faceNode->id);
+                    add_conflict(conflictList, node->id, faceNode->id);
                 }
             }
         }
@@ -254,7 +252,7 @@ void ConvexHull::findTwinsForFace(Mesh& mesh, Face* face) {
     } while (he != face->halfEdge);
 }
 
-void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4) {
+void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4) {
     // Verifica se o ponto v3 está abaixo do plano definido por v1 e v2
     int a, b, c, d;
     computePlaneEquation(v1, v2, v3, a, b, c, d);
@@ -265,30 +263,37 @@ void ConvexHull::swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Ver
         // Se v3 está acima do plano, não é necessário trocar
         return;
     }
-
+    
     // cout << "Point v3 is below the plane defined by v1 and v2. Swapping vertices." << endl;
-
+    
     swap(v3, v4); // Troca v3 e v4 para garantir que v4 esteja acima do plano
+}
+
+HalfEdge* findDivisorHalfEdge(Mesh& mesh, Face* f1, Face* f2){
+    HalfEdge* he = f1->halfEdge;
+    do {
+        if (he->twin && he->twin->leftFace == f2) {
+            return he;
+        }
+        he = he->next;
+    } while (he != f1->halfEdge);
+    return nullptr; 
 }
 
 void ConvexHull::merge(Mesh& mesh, Face* newFace, HalfEdge* he){
     HalfEdge* temp = newFace->halfEdge;
     while (temp->next != newFace->halfEdge) {
         if (temp->twin != nullptr && temp->twin->leftFace != nullptr) {
-            // Check if the twin face is coplanar with the new face
-            if (isCoplanar(newFace, temp->twin->leftFace)) {
-                // Merge as faces
-                cout << "idx newFace: " << newFace->idx << endl;
-                cout << "idx face: " << temp->twin->leftFace->idx << endl;
-                cout << "faces coplanares" << endl;
-
-                // merge
+            double angle = angleBetweenNormals(newFace, temp->twin->leftFace);
+            if (angle == 180) {
                 return;
             }
+
+         }
+            temp = temp->next;
         }
-        temp = temp->next;
     }
-}
+
 
 void ConvexHull::loadTetrahedron(Mesh& mesh){
     // necessário encontrar quatro pontos não coplanares
@@ -296,11 +301,6 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
         cout << "Point cloud size is too small" << endl;
         return;
     }
-
-    // escolher um ponto aleatório
-    // int random = rand() % pointCloud.size();
-    // Vertice* v1 = mesh.createNewVertex(pointCloud[random].x, pointCloud[random].y, pointCloud[random].z);
-    // pointCloud.erase(random);
 
     int random = rand() % pointCloud.size();
     auto it = pointCloud.begin();
@@ -325,9 +325,14 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     //     v3->x, v3->y, v3->z,
     //     v4->x, v4->y, v4->z);
         
-        swapIfNegativePlane(v1, v2, v3, v4);
-        // Carrega o tetraedro na malha
-        mesh.loadTetrahedron(v1, v2, v3, v4);
+    swapIfNegativePlane(v1, v2, v3, v4);
+
+    centroid->x = (v1->x + v2->x + v3->x + v4->x) / 4;
+    centroid->y = (v1->y + v2->y + v3->y + v4->y) / 4;
+    centroid->z = (v1->z + v2->z + v3->z + v4->z) / 4;
+
+    // Carrega o tetraedro na malha
+    mesh.loadTetrahedron(v1, v2, v3, v4);
 }
 
 /*
@@ -364,27 +369,37 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             // deletar todas as faces do conflito com pr da malha
             facesIdx.push_back(face->idx);
             mesh.removeFace(face);
+
+            Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
+            remove_node(conflictList, faceNode->id);
         }
         
         // para cada aresta l em L, faça:
         for (HalfEdge *he : horizon)
         {
             // conecte pr à aresta l, criando uma nova face triangular f'
-            Face *newFace = mesh.createNewFace(pr, he);
+            Vertice *v1 = he->origin;
+            Vertice *v2 = he->next->origin;
+            Face *newFace = mesh.createNewFace(v1, v2, pr);
             findTwinsForFace(mesh, newFace);
             // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
-            merge(mesh, newFace, he);
+            // merge(mesh, newFace, he);
 
             
             // se não, crie um nodo no grafo de visibilidade G para f'
+            add_node(conflictList, conflictList->num_nodes, newFace->idx, false);
         }
         mesh.printDCEL();
+
+        // for (HalfEdge *he : mesh.getHalfEdges()) {
+        //     mesh.printHalfEdge(he);
+        // }
         
-
-        break;
-
         // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
+        Node* pointNode = get_node_by_ref_id(conflictList, id, true);
+        remove_node(conflictList, pointNode->id);
         // atualize a malha e o grafo de visibilidade conforme necessário
+        constructConflictList(mesh);
         pointCloud.erase(it);
     }
 }

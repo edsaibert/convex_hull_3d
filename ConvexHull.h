@@ -19,8 +19,8 @@ void constructNewVertice(Mesh mesh, int x, int y, int z);
 
 class ConvexHull {
     public:
-        ConvexHull() {};
-        ~ConvexHull() {};
+        ConvexHull() {centroid = new Vertice;};
+        ~ConvexHull() {delete centroid;};
         
         void readCloud();
         void createConvexHull(Mesh& mesh);
@@ -34,7 +34,7 @@ class ConvexHull {
         void addPairsToConflictList(Mesh& mesh);
         void constructConflictList(Mesh& mesh);
         bool pointIsAboveFace(Face* face, IndexedPoint& point);
-        void swapIfNegativePlane(Vertice* v1, Vertice* v2, Vertice*& v3, Vertice*& v4);
+        void swapIfNegativePlane(Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();
         void findTwinsForFace(Mesh& mesh, Face* face);
         void merge(Mesh& mesh, Face* newFace, HalfEdge* he);
@@ -43,6 +43,7 @@ class ConvexHull {
         FACES collectVisibleFaces(Mesh& mesh, IndexedPoint& pr, int pointIndex);
 
         BipartiteGraph* conflictList = nullptr;
+        Vertice* centroid = nullptr; 
 };
 
 #endif

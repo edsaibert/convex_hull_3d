@@ -33,6 +33,7 @@ class ConvexHull {
         void findNotCoplanarPoints(Mesh &mesh, Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void addPairsToConflictList(Mesh& mesh);
         void constructConflictList(Mesh& mesh);
+        void constructConflictList(Mesh& mesh, Face* face, int idx);
         bool pointIsAboveFace(Face* face, IndexedPoint& point);
         void swapIfNegativePlane(Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();

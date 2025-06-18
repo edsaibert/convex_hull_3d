@@ -5,6 +5,7 @@ BipartiteGraph* create_bipartite_graph(){
     BipartiteGraph* graph = new BipartiteGraph;
     graph->nodes = nullptr;
     graph->num_nodes = 0;
+    graph->idx = 0;
     return graph;
 }
 
@@ -38,6 +39,7 @@ Node* add_node(BipartiteGraph* graph, int id, int refId, bool is_in_set_A){
     new_node->next = nullptr;
     new_node->edges = nullptr;
     graph->num_nodes++;
+    graph->idx++;
 
     // Insert the new node at the beginning of the linked list
     if (graph->nodes == nullptr) {
@@ -121,29 +123,38 @@ void remove_node(BipartiteGraph* graph, int id){
     if (!graph || graph->num_nodes == 0) {
         return; // Graph is empty
     }
-    
+
+    // remove all edges that conflict with the node being removed
     Node* current = graph->nodes;
+    while (current != nullptr) {
+        if (current->id != id) {
+            remove_conflict(graph, current->id, id);
+        }
+        current = current->next;
+    }
+
+    // removing the node itself
+    current = graph->nodes;
     Node* previous = nullptr;
 
     while (current != nullptr) {
         if (current->id == id) {
-            // Found the node to remove
             if (previous == nullptr) {
                 // Node is the first in the list
                 graph->nodes = current->next;
             } else {
                 previous->next = current->next;
             }
-            // Free edges associated with the node
+            // Free the edges associated with the node
             Edge* edge = current->edges;
             while (edge != nullptr) {
                 Edge* temp_edge = edge;
                 edge = edge->next;
-                delete temp_edge; // Free each edge
+                delete temp_edge;
             }
-            delete current; // Free the node itself
+            delete current; 
             graph->num_nodes--;
-            return; // Node removed successfully
+            return; 
         }
         previous = current;
         current = current->next;

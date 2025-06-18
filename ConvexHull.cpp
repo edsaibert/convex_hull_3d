@@ -168,7 +168,7 @@ bool ConvexHull::pointIsAboveFace(Face* face, IndexedPoint& point){
 
     int result = A * point.x + B * point.y + C * point.z + D;
 
-    if (result > 0) {
+    if (result >= 0) {
         return true;
     }
     return false;
@@ -187,6 +187,22 @@ void ConvexHull::constructConflictList(Mesh& mesh){
                     Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
                     add_conflict(conflictList, node->id, faceNode->id);
                 }
+            }
+        }
+    }
+}
+
+void ConvexHull::constructConflictList(Mesh& mesh, Face* face, int idx){
+    for (Node* node = conflictList->nodes; node != nullptr; node = node->next) {
+        if (node->is_in_set_A && node->refId != idx) {
+            // Adiciona a face ao conflito se o ponto é visível para a face
+            if (pointIsAboveFace(face, pointCloud.at(node->refId))) {
+                cout << "Point " << pointCloud.at(node->refId).x << ", "
+                     << pointCloud.at(node->refId).y << ", "
+                     << pointCloud.at(node->refId).z << " is visible to face " << face->idx << endl;
+
+                Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
+                add_conflict(conflictList, node->id, faceNode->id);
             }
         }
     }
@@ -282,22 +298,28 @@ HalfEdge* findDivisorHalfEdge(Mesh& mesh, Face* f1, Face* f2){
     return nullptr; 
 }
 
-void ConvexHull::merge(Mesh& mesh, Face* newFace, HalfEdge* he){
+void ConvexHull::merge(Mesh& mesh, Face* newFace, HalfEdge* /*he*/) {
     HalfEdge* temp = newFace->halfEdge;
-    while (temp->next != newFace->halfEdge) {
-        if (temp->twin != nullptr && temp->twin->leftFace != nullptr) {
+    do {
+        if (temp->twin && temp->twin->leftFace) {
             double angle = angleBetweenNormals(newFace, temp->twin->leftFace);
             cout << "Angle between new face and twin face: " << angle << " degrees" << endl;
-            if (angle == 0) {
-                // mesh.removeFace(temp->twin->leftFace);
-                // findTwinsForFace(mesh, temp->twin->leftFace);
-                return;
-            }
+            if (fabs(angle) < 1e-6) {
+                // Replicar os conflitos da face coplanar para a nova face
+                cout << "Merging conflicts between faces: " << newFace->idx << " and " << temp->twin->leftFace->idx << endl;
 
-         }
-            temp = temp->next;
+                Node* twinNode = get_node_by_ref_id(conflictList, temp->twin->leftFace->idx, false);
+                Node* newFaceNode = get_node_by_ref_id(conflictList, newFace->idx, false);
+
+                for (Edge* e = twinNode->edges; e != nullptr; e = e->next) {
+                    int pointId = e->to->id;
+                    add_conflict(conflictList, pointId, newFaceNode->id);
+                }
+            }
         }
-    }
+        temp = temp->next;
+    } while (temp != newFace->halfEdge);
+}
 
 
 void ConvexHull::loadTetrahedron(Mesh& mesh){
@@ -353,6 +375,7 @@ void ConvexHull::createConvexHull(Mesh &mesh)
     // inicializar o grafo G com todos as duplas visiveis (p, f), onde f é uma faceta do convexHull e t > 4
     conflictList = create_bipartite_graph();
     addPairsToConflictList(mesh);
+    mesh.printDCEL();
 
     // enquanto houver pontos na nuvem de pontos, faça:
     vector<int> facesIdx = {};
@@ -390,10 +413,11 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             Face *newFace = mesh.createNewFace(v1, v2, pr);
             findTwinsForFace(mesh, newFace);
             // se f' é coplanar com uma vizinha face f, então faça um merge f' e f
-            // merge(mesh, newFace, he);
-
             // se não, crie um nodo no grafo de visibilidade G para f'
-            add_node(conflictList, conflictList->num_nodes, newFace->idx, false);
+            add_node(conflictList, conflictList->idx, newFace->idx, false);
+            constructConflictList(mesh, newFace, id);
+            
+            // merge(mesh, newFace, he);
         }
         mesh.printDCEL();
         
@@ -401,11 +425,11 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             //     mesh.printHalfEdge(he);
             // }
             
-            // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
-            Node* pointNode = get_node_by_ref_id(conflictList, id, true);
-            remove_node(conflictList, pointNode->id);
-            // atualize a malha e o grafo de visibilidade conforme necessário
-            pointCloud.erase(it);
-            constructConflictList(mesh);
+        // delete o nodo correspondente a pr e os nodos correspondentes ao grafo de visibilidade G com pr
+        Node* pointNode = get_node_by_ref_id(conflictList, id, true);
+        remove_node(conflictList, pointNode->id);
+        // atualize a malha e o grafo de visibilidade conforme necessário
+        pointCloud.erase(it);
+        // constructConflictList(mesh);
         }
 }

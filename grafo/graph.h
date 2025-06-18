@@ -23,6 +23,7 @@ typedef struct Edge {
 typedef struct BipartiteGraph{
     Node* nodes;
     size_t num_nodes;
+    size_t idx;
 } BipartiteGraph;
 
 // Creates an empty bipartite graph

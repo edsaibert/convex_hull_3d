@@ -25,8 +25,6 @@ class ConvexHull {
         void readCloud();
         void createConvexHull(Mesh& mesh);
         void loadTetrahedron(Mesh& mesh);
-        void addToConvexHull(Mesh& mesh, Vertice* v);
-        void constructPartitionedFace(Face* f, Vertice* v);
 
     private:
         unordered_map<int, IndexedPoint> pointCloud;
@@ -38,9 +36,10 @@ class ConvexHull {
         void swapIfNegativePlane(Vertice* v1, Vertice*& v2, Vertice*& v3, Vertice*& v4);
         void permutePointCloud();
         void findTwinsForFace(Mesh& mesh, Face* face);
-        void merge(Mesh& mesh, Face* newFace, HalfEdge* he);
+        void mergeFaces(Mesh& mesh, Face*& face1, Face* face2);
 
         vector<HalfEdge*> get_horizon_from_faces(Mesh& mesh, FACES& visibleFaces);
+        vector<HalfEdge*> updateHorizon(vector<HalfEdge*>& horizon, Face* old, Face* newFace);
         FACES collectVisibleFaces(Mesh& mesh, IndexedPoint& pr, int pointIndex);
 
         BipartiteGraph* conflictList = nullptr;

@@ -2,7 +2,9 @@
 
 void ConvexHull::readCloud(){
     int x, y, z;
+    int nVertices;
     int id = 0;
+    cin >> nVertices;
     while(cin >> x >> y >> z) {
         IndexedPoint point;
         point.x = x;
@@ -317,6 +319,15 @@ void ConvexHull::mergeFaces(Mesh& mesh, Face*& face1, Face* face2){
     mesh.removeHalfEdge(d);
 }
 
+void addHalfEdgesToDelete(vector<HalfEdge*>& toDelete, HalfEdge* he) {
+    if (!he) return;
+    HalfEdge* start = he;
+    do {
+        toDelete.push_back(he);
+        he = he->next;
+    } while (he != start);
+}
+
 void ConvexHull::loadTetrahedron(Mesh& mesh){
     // necessário encontrar quatro pontos não coplanares
     if (pointCloud.size() < 4){
@@ -351,6 +362,11 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     mesh.loadTetrahedron(v1, v2, v3, v4);
 }
 
+void ConvexHull::printConvexHull(Mesh& mesh){
+    // mesh.triangulateFaces();
+    return;
+}
+
 
 /*
 Algoritmo principal de construção do Convex Hull
@@ -369,9 +385,11 @@ void ConvexHull::createConvexHull(Mesh &mesh)
     // enquanto houver pontos na nuvem de pontos, faça:
     vector<HalfEdge *> horizon = {};
     vector<pair<Face*, Face*>> toMerge;
+    vector<HalfEdge*> toDelete;
     while (!pointCloud.empty())
     {
         toMerge.clear();
+        toDelete.clear();
         // adicionar o ponto pr à malha
         auto it = pointCloud.begin();
         int id = it->first;
@@ -387,6 +405,7 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             // deletar todas as faces do conflito com pr da malha
             Node* faceNode = get_node_by_ref_id(conflictList, face->idx, false);
             remove_node(conflictList, faceNode->id);
+            addHalfEdgesToDelete(toDelete, face->halfEdge);
             
             mesh.removeFace(face);
         }
@@ -425,9 +444,17 @@ void ConvexHull::createConvexHull(Mesh &mesh)
             constructConflictList(mesh, newFace, id);
         }
 
+        for (HalfEdge* he : toDelete){
+            delete he;
+        }
+
         Node* pointNode = get_node_by_ref_id(conflictList, id, true);
         remove_node(conflictList, pointNode->id);
         pointCloud.erase(it);
     }
+
+    free_bipartite_graph(conflictList);
+    delete conflictList;
     mesh.printDCEL();
+    
 }

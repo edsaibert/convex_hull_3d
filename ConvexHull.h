@@ -15,8 +15,6 @@ struct IndexedPoint {
     int z;
 };
 
-void constructNewVertice(Mesh mesh, int x, int y, int z);
-
 class ConvexHull {
     public:
         ConvexHull() {centroid = new Vertice;};
@@ -25,6 +23,7 @@ class ConvexHull {
         void readCloud();
         void createConvexHull(Mesh& mesh);
         void loadTetrahedron(Mesh& mesh);
+        void printConvexHull(Mesh& mesh);
 
     private:
         unordered_map<int, IndexedPoint> pointCloud;

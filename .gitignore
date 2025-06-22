@@ -1,4 +1,3 @@
 matplotlib-cpp
 *.o
-convex_hull
 main

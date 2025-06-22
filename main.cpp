@@ -1,4 +1,4 @@
-#include "ConvexHull.h"
+#include "./src/convex_hull/ConvexHull.h"
 
 int main() {
     Mesh mesh;

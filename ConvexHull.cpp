@@ -362,11 +362,89 @@ void ConvexHull::loadTetrahedron(Mesh& mesh){
     mesh.loadTetrahedron(v1, v2, v3, v4);
 }
 
-void ConvexHull::printConvexHull(Mesh& mesh){
-    // mesh.triangulateFaces();
-    return;
+TriangleNode* ConvexHull::createTriangleNode(int v1, int v2, int v3, int idx) {
+    TriangleNode* node = new TriangleNode;
+    node->v1 = v1;
+    node->v2 = v2;
+    node->v3 = v3;
+    node->idx = idx;
+    return node;
 }
 
+void ConvexHull::setNeighbors(unordered_map<Face*, TriangleNode*>& faceToTriangleMap) {
+    // Implementa a lógica para definir vizinhos entre os triângulos
+    for (auto& pair : faceToTriangleMap) {
+        Face* face = pair.first;
+        TriangleNode* triangle = pair.second;
+
+        HalfEdge* he1 = face->halfEdge;
+        HalfEdge* he2 = he1->next;
+        HalfEdge* he3 = he2->next;
+
+        HalfEdge* twin1 = he1->twin;
+        HalfEdge* twin2 = he2->twin;
+        HalfEdge* twin3 = he3->twin;
+
+        TriangleNode* neighbor1 = faceToTriangleMap[twin1->leftFace];
+        TriangleNode* neighbor2 = faceToTriangleMap[twin2->leftFace];
+        TriangleNode* neighbor3 = faceToTriangleMap[twin3->leftFace];
+
+        triangle->t1 = neighbor1->idx;
+        triangle->t2 = neighbor2->idx;
+        triangle->t3 = neighbor3->idx;
+    }
+
+}
+
+void ConvexHull::setTriangulation(Mesh& mesh) {
+    unordered_map<Face*, TriangleNode*> faceToTriangleMap;
+    int i = 0;
+    for (Face* face : mesh.getFaces()) {
+        HalfEdge* he = face->halfEdge;
+        int v1 = he->origin->idx;
+        int v2 = he->next->origin->idx;
+        int v3 = he->prev->origin->idx;
+        array<int, 3> verts = {v1, v3, v2};
+        // Garante que o menor índice seja o primeiro
+        if (verts[1] < verts[0] && verts[1] < verts[2]) {
+            rotate(verts.begin(), verts.begin() + 1, verts.end());
+        } else if (verts[2] < verts[0] && verts[2] < verts[1]) {
+            rotate(verts.begin(), verts.begin() + 2, verts.end());
+        }
+
+        TriangleNode* triangle = createTriangleNode(verts[0], verts[1], verts[2], i);
+
+        triangulation.push_back(triangle);
+        faceToTriangleMap[face] = triangle;
+        i++;
+    }
+    setNeighbors(faceToTriangleMap);
+}
+
+void ConvexHull::freeTriangulation(TRIANGLES& triangulation) {
+    for (TriangleNode* triangle : triangulation) {
+        delete triangle;
+    }
+}
+
+void ConvexHull::printConvexHull(Mesh& mesh){
+    mesh.triangulateFaces();
+    setTriangulation(mesh);
+
+    cout << mesh.getVertices().size() << endl;
+    for (Vertice* v : mesh.getVertices()){
+        cout << v->x << " " << v->y << " " << v->z << endl;
+    }
+
+    cout << triangulation.size() << endl;
+    for (TriangleNode* triangle : triangulation){
+        cout << triangle->v1+1 << " " << triangle->v2+1 << " " << triangle->v3+1 << " " << triangle->t1+1 << " "
+             << triangle->t2+1 << " " << triangle->t3+1 << endl;
+    }
+
+    freeTriangulation(triangulation);
+    triangulation.clear();
+}
 
 /*
 Algoritmo principal de construção do Convex Hull
@@ -455,6 +533,6 @@ void ConvexHull::createConvexHull(Mesh &mesh)
 
     free_bipartite_graph(conflictList);
     delete conflictList;
-    mesh.printDCEL();
+    // mesh.printDCEL();
     
 }

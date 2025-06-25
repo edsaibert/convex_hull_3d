@@ -476,6 +476,19 @@ void ConvexHull::createConvexHull(Mesh &mesh)
         Vertice *pr = mesh.createNewVertex(point.x, point.y, point.z);
         // se pr é visível à uma face f (é exterior), então:
         FACES visibleFaces = collectVisibleFaces(mesh, point, id);
+        if (visibleFaces.empty())
+        {
+            // se pr não é visível a nenhuma face, então:
+            // adicionar pr ao grafo de visibilidade G
+            Node* pointNode = add_node(conflictList, conflictList->idx, id, true);
+            if (!pointNode) {
+                cout << "Failed to add node for point " << id << endl;
+                continue;
+            }
+            continue;
+        }
+
+
         horizon = get_horizon_from_faces(mesh, visibleFaces);
         
         for (Face *face : visibleFaces)
